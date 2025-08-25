@@ -1,0 +1,19 @@
+APP ?= screenshot-to-ics
+
+.PHONY: bootstrap clean
+
+bootstrap:
+	@echo "Initializing Vite + Tailwind v4 + shadcn/ui project…"
+	npm create vite@latest $(APP) -- --template react-ts
+	cd $(APP) && \
+	npm install -D tailwindcss @tailwindcss/vite postcss autoprefixer && \
+	npm install tesseract.js chrono-node ics file-saver lucide-react clsx class-variance-authority tailwind-animate tailwind-merge && \
+	echo '@import "tailwindcss";' > src/index.css && \
+	node -e "let tsj=require('fs').readFileSync('tsconfig.json','utf8');fs=require('fs');let j=JSON.parse(tsj);j.compilerOptions={...j.compilerOptions,baseUrl:'.',paths:{'@/*':['./src/*']}};fs.writeFileSync('tsconfig.json',JSON.stringify(j,null,2));" && \
+	node -e "let vaj=require('fs').readFileSync('vite.config.ts','utf8');let nw=\"import path from 'path';\n\"+vaj.replace('plugins: [react()',\"plugins: [react(), tailwindcss()\",).replace(\"defineConfig({\",\"defineConfig({\n  resolve:{alias:{'@':path.resolve(__dirname,'./src')}},\");fs=require('fs');fs.writeFileSync('vite.config.ts',nw);" && \
+	npx shadcn@latest init && \
+	npx shadcn@latest add button card input textarea \
+	echo "🎉 Setup complete. Next steps:\n  cd $(APP)\n  npm run dev" 
+
+clean:
+	rm -rf $(APP)

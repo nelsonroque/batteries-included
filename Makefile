@@ -35,66 +35,53 @@ PM  ?= npm
 # Interactive meta-target: prompts for STACK/APP/PM (and OPENAPI if needed),
 # then dispatches to the correct script.
 bootstrap:
-	@bash -eu -o pipefail -c '\
-	  stack="${STACK:-}"; \
-	  app="${APP:-my-app}"; \
-	  pm="${PM:-npm}"; \
-	  openapi="${OPENAPI:-}"; \
-	  \
-	  if [[ -z "$$stack" || "$$stack" = "ask" || "$$stack" = "-" ]]; then \
-	    echo "Choose stack:"; \
-	    echo "  1) vite                 – Vite + React + TS + Tailwind v4 + shadcn/ui"; \
-	    echo "  2) nextjs               – Next.js + TS + Tailwind v4 + shadcn/ui"; \
-	    echo "  3) nextjs-api-client    – Next.js + Tailwind + shadcn/ui + generated OpenAPI client"; \
-	    echo "  4) auth-supabase        – Next.js + Tailwind + shadcn/ui + Supabase Auth"; \
-	    echo "  5) api-client-openapi   – Standalone TS library from OpenAPI (openapi-fetch)"; \
-	    read -rp "Enter choice [1-5]: " choice; \
-	    case "$$choice" in \
-	      1) stack="vite" ;; \
-	      2) stack="nextjs" ;; \
-	      3) stack="nextjs-api-client" ;; \
-	      4) stack="auth-supabase" ;; \
-	      5) stack="api-client-openapi" ;; \
-	      *) echo "Error: invalid choice." >&2; exit 1 ;; \
-	    esac; \
-	  fi; \
-	  if [[ -z "$$app" || "$$app" = "my-app" ]]; then \
-	    read -rp "Enter app name [my-app]: " in_app; \
-	    app="$${in_app:-$$app}"; \
-	  fi; \
-	  if [[ -z "$$pm" || "$$pm" = "ask" || "$$pm" = "-" ]]; then \
-	    read -rp "Enter package manager (npm/pnpm) [npm]: " in_pm; \
-	    pm="$${in_pm:-npm}"; \
-	  fi; \
-	  case "$$pm" in npm|pnpm) ;; *) echo "Error: PM must be npm or pnpm (got '\''$$pm'\'')." >&2; exit 1;; esac; \
-	  # Determine target & script; prompt for OPENAPI when needed \
-	  case "$$stack" in \
-	    vite)                target="bootstrap-vite-tailwind-shadcn";        script="./scripts/bootstrap_vite_tailwind_shadcn.sh" ;; \
-	    nextjs)              target="bootstrap-nextjs-tailwind-shadcn";      script="./scripts/bootstrap_nextjs_tailwind_shadcn.sh" ;; \
-	    nextjs-api-client)   target="bootstrap-nextjs-api-client";           script="./scripts/bootstrap_nextjs_api_client.sh" ;; \
-	    auth-supabase)       target="bootstrap-auth-supabase";               script="./scripts/bootstrap_auth_supabase.sh" ;; \
-	    api-client-openapi)  target="bootstrap-api-client-openapi";          script="./scripts/bootstrap_api_client_openapi.sh" ;; \
-	    *) echo "Error: STACK must be one of: vite | nextjs | nextjs-api-client | auth-supabase | api-client-openapi (got '\''$$stack'\'')." >&2; exit 1 ;; \
+	@set -euo pipefail; \
+	STACK_IN='$(STACK)'; APP_IN='$(APP)'; PM_IN='$(PM)'; OPENAPI_IN='$(OPENAPI)'; \
+	\
+	if [[ -z "$$STACK_IN" || "$$STACK_IN" == "ask" || "$$STACK_IN" == "-" ]]; then \
+	  echo "Choose stack:"; \
+	  echo "  1) vite                 – Vite + React + TS + Tailwind v4 + shadcn/ui"; \
+	  echo "  2) nextjs               – Next.js + TS + Tailwind v4 + shadcn/ui"; \
+	  echo "  3) nextjs-api-client    – Next.js + Tailwind + shadcn/ui + generated OpenAPI client"; \
+	  echo "  4) auth-supabase        – Next.js + Tailwind + shadcn/ui + Supabase Auth"; \
+	  echo "  5) api-client-openapi   – Standalone TS library from OpenAPI (openapi-fetch)"; \
+	  read -rp "Enter choice [1-5]: " choice; \
+	  case "$$choice" in \
+	    1) STACK_IN="vite" ;; \
+	    2) STACK_IN="nextjs" ;; \
+	    3) STACK_IN="nextjs-api-client" ;; \
+	    4) STACK_IN="auth-supabase" ;; \
+	    5) STACK_IN="api-client-openapi" ;; \
+	    *) echo "Error: invalid choice." >&2; exit 1 ;; \
 	  esac; \
-	  if [[ "$$stack" = "nextjs-api-client" || "$$stack" = "api-client-openapi" ]]; then \
-	    if [[ -z "$$openapi" ]]; then \
-	      read -rp "Enter OpenAPI URL or path (leave blank to skip generation now): " in_openapi; \
-	      openapi="$$in_openapi"; \
-	    fi; \
+	fi; \
+	\
+	if [[ -z "$$APP_IN" || "$$APP_IN" == "my-app" ]]; then \
+	  read -rp "Enter app name [my-app]: " in_app; APP_IN="$${in_app:-$$APP_IN}"; \
+	fi; \
+	if [[ -z "$$PM_IN" || "$$PM_IN" == "ask" || "$$PM_IN" == "-" ]]; then \
+	  read -rp "Enter package manager (npm/pnpm) [npm]: " in_pm; PM_IN="$${in_pm:-npm}"; \
+	fi; \
+	case "$$PM_IN" in npm|pnpm) ;; *) echo "Error: PM must be npm or pnpm (got '\''$$PM_IN'\'')." >&2; exit 1 ;; esac; \
+	\
+	if [[ "$$STACK_IN" == "nextjs-api-client" || "$$STACK_IN" == "api-client-openapi" ]]; then \
+	  if [[ -z "$$OPENAPI_IN" ]]; then \
+	    read -rp "Enter OpenAPI URL or path (leave blank to skip generation now): " in_openapi; \
+	    OPENAPI_IN="$$in_openapi"; \
 	  fi; \
-	  if [[ ! -f "$$script" ]]; then \
-	    echo "Error: $$script not found." >&2; exit 1; \
-	  fi; \
-	  if [[ ! -x "$$script" ]]; then \
-	    echo "Note: $$script is not executable. Attempting to chmod +x…"; chmod +x "$$script" || true; \
-	  fi; \
-	  echo "▶ Running $$target with APP='\''$$app'\'' PM='\''$$pm'\''$${openapi:+ OPENAPI='\''$$openapi'\''}"; \
-	  if [[ "$$stack" = "nextjs-api-client" || "$$stack" = "api-client-openapi" ]]; then \
-	    "$$script" "$$app" "$$pm" "$$openapi"; \
-	  else \
-	    "$$script" "$$app" "$$pm"; \
-	  fi; \
-	'
+	fi; \
+	\
+	case "$$STACK_IN" in \
+	  vite)                TARGET="bootstrap-vite-tailwind-shadcn" ;; \
+	  nextjs)              TARGET="bootstrap-nextjs-tailwind-shadcn" ;; \
+	  nextjs-api-client)   TARGET="bootstrap-nextjs-api-client" ;; \
+	  auth-supabase)       TARGET="bootstrap-auth-supabase" ;; \
+	  api-client-openapi)  TARGET="bootstrap-api-client-openapi" ;; \
+	  *) echo "Error: unknown STACK '\''$$STACK_IN'\''." >&2; exit 1 ;; \
+	esac; \
+	\
+	echo "▶ make $$TARGET APP='\$$APP_IN' PM='\$$PM_IN'$${OPENAPI_IN:+ OPENAPI='\$$OPENAPI_IN'}"; \
+	$(MAKE) --no-print-directory $$TARGET APP="$$APP_IN" PM="$$PM_IN" OPENAPI="$$OPENAPI_IN"
 
 # ---- Non-interactive explicit targets ---------------------------------------
 

@@ -1,0 +1,95 @@
+APP ?= screenshot-to-ics
+PM  ?= npm   # npm | pnpm
+
+DEV_DEPS = tailwindcss @tailwindcss/vite postcss autoprefixer
+RUNTIME_DEPS = tesseract.js chrono-node ics file-saver \
+  lucide-react clsx class-variance-authority tailwind-merge tailwind-animate sonner
+
+SHADCN_COMPONENTS ?= \
+  button card input textarea label checkbox switch \
+  dropdown-menu select popover tooltip separator \
+  dialog sheet tabs toast progress skeleton badge
+
+ifeq ($(PM),pnpm)
+  CREATE = pnpm create vite $(APP) --template react-ts
+  ADD    = pnpm add
+  ADD_D  = pnpm add -D
+  RUN    = pnpm run
+  EXEC   = pnpm dlx
+else
+  CREATE = npm create vite@latest $(APP) -- --template react-ts
+  ADD    = npm install
+  ADD_D  = npm install -D
+  RUN    = npm run
+  EXEC   = npx
+endif
+
+.PHONY: bootstrap deps configure shadcn add-shadcn dev clean
+
+bootstrap:
+	@echo "Initializing Vite + Tailwind v4 + shadcn/ui project…"
+	@if [ ! -d "$(APP)" ]; then $(CREATE); else echo "• $(APP) exists, skipping create"; fi
+	$(MAKE) deps
+	$(MAKE) configure
+	$(MAKE) shadcn
+	@echo "🎉 Setup complete. Next steps:\n  cd $(APP)\n  $(PM) run dev"
+
+deps:
+	@cd $(APP) && \
+	$(ADD_D) $(DEV_DEPS) && \
+	$(ADD) $(RUNTIME_DEPS)
+
+configure:
+	@cd $(APP) && \
+	mkdir -p src && \
+	printf '@import "tailwindcss";\n' > src/index.css && \
+	node - <<'NODE'
+const fs = require('fs');
+const p = 'tsconfig.json';
+if (!fs.existsSync(p)) process.exit(0);
+const j = JSON.parse(fs.readFileSync(p,'utf8'));
+j.compilerOptions = j.compilerOptions || {};
+j.compilerOptions.baseUrl = '.';
+j.compilerOptions.paths = Object.assign({}, j.compilerOptions.paths, { '@/*': ['./src/*'] });
+fs.writeFileSync(p, JSON.stringify(j, null, 2));
+NODE
+	@cd $(APP) && \
+	node - <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const p = 'vite.config.ts';
+if (!fs.existsSync(p)) process.exit(0);
+let s = fs.readFileSync(p, 'utf8');
+if (!s.includes("import tailwindcss")) { s = "import tailwindcss from '@tailwindcss/vite';\n" + s; }
+if (!s.includes("import path from 'path'")) { s = "import path from 'path';\n" + s; }
+s = s.replace(/plugins:\s*\[([\s\S]*?)\]/, (m, inner) => {
+  if (/\btailwindcss\(\)/.test(inner)) return m;
+  return `plugins: [${inner.trim()}${inner.trim() ? ', ' : ''}tailwindcss()]`;
+});
+if (!/resolve:\s*\{[^}]*alias:/.test(s)) {
+  s = s.replace(/defineConfig\(\{/, "defineConfig({\n  resolve: { alias: { '@': path.resolve(__dirname, './src') } },");
+} else {
+  s = s.replace(/alias:\s*\{([\s\S]*?)\}/, (m, inner) => {
+    if (inner.includes("'@':") || inner.includes('"@":')) return m;
+    const trimmed = inner.trim().replace(/^\s*|\s*$/g,'');
+    const injected = trimmed ? trimmed + ", '@': path.resolve(__dirname, './src')" : "'@': path.resolve(__dirname, './src')";
+    return `alias: { ${injected} }`;
+  });
+}
+fs.writeFileSync(p, s);
+NODE
+
+shadcn:
+	@cd $(APP) && \
+	$(EXEC) shadcn@latest init -y && \
+	$(EXEC) shadcn@latest add $(SHADCN_COMPONENTS)
+
+add-shadcn:
+	@cd $(APP) && \
+	$(EXEC) shadcn@latest add $(COMPONENTS)
+
+dev:
+	@cd $(APP) && $(RUN) dev
+
+clean:
+	@rm -rf $(APP)

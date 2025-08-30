@@ -110,5 +110,48 @@ gen-openapi-lib:
 	APP=m2c2-ts \
 	PM=npm \
 	OPENAPI=https://api.m2c2kit.com/openapi.json
-	
-	npm run generate:api https://api.m2c2kit.com/openapi.json
+
+	cd m2c2-ts
+	OPENAPI=https://api.m2c2kit.com/openapi.json npm run generate:api
+
+
+# ---- Config -------------------------------------------------
+PYTHON ?= uv
+PKG    ?= bootstrapper          # your package/distribution name
+DIST   ?= dist
+
+# ---- Helpers ------------------------------------------------
+.PHONY: deps clean
+
+# With uv we can run build/twine ad-hoc via uvx, so deps can be a no-op.
+deps:
+	@echo "Using uvx for ephemeral tooling (no deps to install)."
+
+clean:
+	rm -rf $(DIST) *.egg-info .pytest_cache .ruff_cache build
+
+# ---- Step 4: Install locally (editable) ---------------------
+.PHONY: install-local
+install-local:
+	$(PYTHON) pip install -e .
+
+# Optional: uninstall
+.PHONY: uninstall-local
+uninstall-local:
+	-$(PYTHON) pip uninstall -y $(PKG)
+
+# ---- Step 5: Build & Publish -------------------------------
+# Build (sdist + wheel) using the 'build' package via uvx
+.PHONY: build
+build: clean deps
+	uvx --from build pyproject-build
+
+# Test upload to TestPyPI (recommended)
+.PHONY: publish-test
+publish-test: build
+	uvx twine upload --repository testpypi $(DIST)/*
+
+# Publish to PyPI
+.PHONY: publish
+publish: build
+	uvx twine upload $(DIST)/*

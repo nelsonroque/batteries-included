@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bootstrapper"
+version = "0.1.0"
+description = "CLI to bootstrap projects with Tailwind v4 + shadcn/ui"
+authors = [{ name = "Your Name", email = "you@example.com" }]
+dependencies = ["typer","questionary"]
+
+[project.scripts]
+bootstrapper = "bootstrapper.cli:app"

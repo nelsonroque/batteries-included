@@ -104,3 +104,11 @@ bootstrap-auth-supabase:
 # Next.js app with in-repo OpenAPI client generation
 bootstrap-nextjs-api-client:
 	./scripts/bootstrap_nextjs_api_client.sh $(APP) $(PM) $(OPENAPI)
+
+gen-openapi-lib:
+	make bootstrap STACK=nextjs-api-client \
+	APP=m2c2-ts \
+	PM=npm \
+	OPENAPI=https://api.m2c2kit.com/openapi.json
+	
+	npm run generate:api https://api.m2c2kit.com/openapi.json
